@@ -4,8 +4,12 @@ from django.core.exceptions import ImproperlyConfigured
 from .conf import settings
 
 
-def get_prefix(**kwargs):
-    return settings.CACHEOPS_PREFIX(PrefixQuery(**kwargs))
+def get_prefix(db_agnostic, **kwargs):
+    prefix_query = PrefixQuery(**kwargs)
+    custom_prefix = settings.CACHEOPS_PREFIX(prefix_query)
+    # Add db_connection to prefix if model is not db_agnostic
+    db_prefix = '' if db_agnostic else '{}:'.format(prefix_query.db)
+    return custom_prefix + db_prefix
 
 
 class PrefixQuery(object):

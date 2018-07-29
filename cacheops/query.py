@@ -96,7 +96,9 @@ def cached_as(*samples, **kwargs):
             if not settings.CACHEOPS_ENABLED or transaction_states.is_dirty(dbs):
                 return func(*args, **kwargs)
 
-            prefix = get_prefix(func=func, _cond_dnfs=cond_dnfs, dbs=dbs)
+            # Fixme : Raise exception if more than one DB given ? 
+            db_agnostic = querysets[0]._cacheprofile['db_agnostic']
+            prefix = get_prefix(func=func, _cond_dnfs=cond_dnfs, dbs=dbs, db_agnostic=db_agnostic)
             cache_key = prefix + 'as:' + key_func(func, args, kwargs, key_extra)
 
             with redis_client.getting(cache_key, lock=lock) as cache_data:
@@ -154,9 +156,6 @@ class QuerySetMixin(object):
             md.update(smart_str(sql_str))
         except EmptyResultSet:
             pass
-        # If query results differ depending on database
-        if self._cacheprofile and not self._cacheprofile['db_agnostic']:
-            md.update(self.db)
         # Thing only appeared in Django 1.9
         it_class = getattr(self, '_iterable_class', None)
         if it_class:
@@ -170,7 +169,7 @@ class QuerySetMixin(object):
 
     @cached_property
     def _prefix(self):
-        return get_prefix(_queryset=self)
+        return get_prefix(_queryset=self, db_agnostic=self._cacheprofile['db_agnostic'])
 
     @cached_property
     def _cond_dnfs(self):
