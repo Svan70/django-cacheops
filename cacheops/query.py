@@ -81,7 +81,6 @@ def cached_as(*samples, **kwargs):
         return queryset
 
     querysets = lmap(_get_queryset, samples)
-    dbs = list({qs.db for qs in querysets})
     cond_dnfs = join_with(lcat, map(dnfs, querysets))
     key_extra = [qs._cache_key(prefix=False) for qs in querysets]
     key_extra.append(extra)
@@ -93,6 +92,8 @@ def cached_as(*samples, **kwargs):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            # dbs are computed here to ensure that real db connection (e.g use of a router) is taken into account even if the function is used as a decorator.
+            dbs = list({qs.db for qs in querysets})
             if not settings.CACHEOPS_ENABLED or transaction_states.is_dirty(dbs):
                 return func(*args, **kwargs)
 
